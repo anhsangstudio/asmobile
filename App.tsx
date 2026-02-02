@@ -1,84 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import {
-  LayoutDashboard,
-  FileText,
-  Calendar,
-  DollarSign,
-  Users,
-  Package,
-  Settings,
-  LogOut,
-  Menu,
-  CheckSquare,
-  Sparkles,
-  Loader2,
-  Lock,
-  Receipt,
-  X
-} from 'lucide-react';
-
-import Dashboard from './components/Dashboard';
-import ContractManager from './components/ContractManager';
-import ExpenseManager from './components/ExpenseManager';
-import PayrollManager from './components/PayrollManager';
-import ScheduleManager from './components/ScheduleManager';
-import StaffManager from './components/StaffManager';
-import ProductManager from './components/ProductManager';
-import StudioSettings from './components/StudioSettings';
-import TaskManager from './components/TaskManager';
-
-import {
-  Contract,
-  Customer,
-  Staff,
-  Service,
-  Transaction,
-  Schedule,
-  Task,
-  StudioInfo,
-  ExpenseCategoryItem,
-  ServiceTypeItem,
-  ServiceGroupItem
-} from './types';
-import { fetchBootstrapData, login as apiLogin, fetchTasks } from './apiService';
-import { mockCustomers, mockContracts, mockServices, mockStaff, mockTransactions } from './mockData';
-
-type TabId =
-  | 'dashboard'
-  | 'quick_expense'
-  | 'contracts'
-  | 'tasks'
-  | 'schedule'
-  | 'finance'
-  | 'payroll'
-  | 'staff'
-  | 'products'
-  | 'settings';
-
-export default function App() {
-  // Auth State
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [currentUser, setCurrentUser] = useState<Staff | null>(null);
-  const [loginUser, setLoginUser] = useState('');
-  const [loginPass, setLoginPass] = useState('');
-  const [authError, setAuthError] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-
-  // App State
-  const [activeTab, setActiveTab] = useState<TabId>('dashboard');
-
-  // Sidebar/Drawer state
-  const [isSidebarOpen, setSidebarOpen] = useState(true); // desktop sidebar
-  const [isDrawerOpen, setDrawerOpen] = useState(false); // mobile drawer
-  const [isMobile, setIsMobile] = useState(false);
-
-  // Data State
-  const [contracts, setContracts] = useState<Contract[]>([]);
-  const [customers, setCustomers] = useState<Customer[]>([]);
-  const [services, setServices] = useState<Service[]>([]);
-  const [staff, setStaff] = useState<Staff[]>([]);
-  const [transactions, setTransactions] = useState<Transaction[]>([]);
-  const [schedules, setSchedules] = useState<Schedule[]>([]);
+@@ -82,86 +82,93 @@ export default function App() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [studioInfo, setStudioInfo] = useState<StudioInfo>({
     name: 'Ánh Sáng Studio',
@@ -104,6 +24,7 @@ export default function App() {
 
   const serviceTypesList = useMemo(() => serviceTypes.map(t => t.name), [serviceTypes]);
   const serviceGroupsList = useMemo(() => serviceGroups.map(g => g.groupName), [serviceGroups]);
+  const mobileTabs: TabId[] = ['contracts', 'tasks', 'products', 'quick_expense'];
 
   const isAdminOrDirector = useMemo(() => {
     return !!currentUser && (currentUser.username === 'admin' || currentUser.role === 'Giám đốc');
@@ -140,6 +61,12 @@ export default function App() {
     return () => window.removeEventListener('resize', compute);
   }, []);
 
+  useEffect(() => {
+    if (isMobile && !mobileTabs.includes(activeTab)) {
+      setActiveTab('quick_expense');
+    }
+  }, [isMobile, activeTab, mobileTabs]);
+
   const refreshTasks = async () => {
     const fetchedTasks = await fetchTasks();
     if (fetchedTasks.length > 0) setTasks(fetchedTasks);
@@ -165,134 +92,7 @@ export default function App() {
       } else {
         // Fallback to mock data
         setContracts(mockContracts);
-        setCustomers(mockCustomers);
-        setServices(mockServices);
-        setStaff(mockStaff);
-        setTransactions(mockTransactions);
-        setSchedules([]);
-        setTasks([]);
-        const uniqueTypes = Array.from(new Set(mockServices.map(s => s.type || 'Khác')));
-        setServiceTypes(uniqueTypes.map((t, i) => ({ id: `st-${i}`, name: t })));
-      }
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const chooseDefaultTabAfterLogin = (user: Staff) => {
-    const mobile = window.innerWidth < 1024;
-    if (mobile) return 'quick_expense' as TabId;
-    if (user.username === 'admin' || user.role === 'Giám đốc') return 'dashboard' as TabId;
-    // for staff: default tasks
-    return 'tasks' as TabId;
-  };
-
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsLoading(true);
-    setAuthError('');
-    try {
-      const result = await apiLogin(loginUser, loginPass);
-      if (result.success && result.user) {
-        setCurrentUser(result.user);
-        setIsAuthenticated(true);
-        await loadData();
-        setActiveTab(chooseDefaultTabAfterLogin(result.user));
-      } else {
-        setAuthError(result.error || 'Đăng nhập thất bại');
-      }
-    } catch (err: any) {
-      setAuthError(err.message);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleLogout = () => {
-    setIsAuthenticated(false);
-    setCurrentUser(null);
-    setLoginUser('');
-    setLoginPass('');
-    setActiveTab('dashboard');
-    setDrawerOpen(false);
-  };
-
-  const setTab = (id: TabId) => {
-    setActiveTab(id);
-    if (isMobile) setDrawerOpen(false);
-  };
-
-  if (!isAuthenticated) {
-    return (
-      <div className="min-h-screen bg-slate-900 flex items-center justify-center p-4">
-        <div className="bg-white rounded-3xl p-8 w-full max-w-md shadow-2xl">
-          <div className="text-center mb-8">
-            <div className="w-16 h-16 bg-blue-600 rounded-2xl mx-auto flex items-center justify-center text-white mb-4 shadow-lg shadow-blue-500/30">
-              <Sparkles size={32} />
-            </div>
-            <h1 className="text-2xl font-black text-slate-900 uppercase tracking-tight">Ánh Sáng Studio</h1>
-            <p className="text-slate-500 font-bold text-xs uppercase tracking-widest mt-2">
-              Hệ thống quản trị tập trung
-            </p>
-          </div>
-
-          <form onSubmit={handleLogin} className="space-y-4">
-            <div>
-              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-2">
-                Tên đăng nhập
-              </label>
-              <input
-                type="text"
-                className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-blue-500 font-bold text-slate-900"
-                value={loginUser}
-                onChange={e => setLoginUser(e.target.value)}
-                placeholder="admin"
-              />
-            </div>
-            <div>
-              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-2">
-                Mật khẩu
-              </label>
-              <input
-                type="password"
-                className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-blue-500 font-bold text-slate-900"
-                value={loginPass}
-                onChange={e => setLoginPass(e.target.value)}
-                placeholder="••••••"
-              />
-            </div>
-
-            {authError && (
-              <div className="p-3 bg-red-50 text-red-600 rounded-xl text-xs font-bold flex items-center gap-2">
-                <Lock size={14} /> {authError}
-              </div>
-            )}
-
-            <button
-              type="submit"
-              disabled={isLoading}
-              className="w-full py-4 bg-blue-600 text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-blue-700 transition-all shadow-xl shadow-blue-500/20 active:scale-95 flex items-center justify-center gap-2"
-            >
-              {isLoading ? <Loader2 className="animate-spin" size={18} /> : 'Đăng nhập hệ thống'}
-            </button>
-          </form>
-        </div>
-      </div>
-    );
-  }
-
-  const pendingTasksCount = tasks.filter(
-    t => t.assignedStaffIds.includes(currentUser?.id || '') && t.status !== 'Completed'
-  ).length;
-
-  const pageTitle = (() => {
-    if (activeTab === 'dashboard') return 'Dashboard';
-    if (activeTab === 'quick_expense') return 'Ghi Phiếu Chi Nhanh';
-    if (activeTab === 'contracts') return 'Quản lý Hợp đồng';
-    if (activeTab === 'tasks') return 'Quản lý Công việc';
-    if (activeTab === 'schedule') return 'Lịch làm việc';
+@@ -296,147 +303,147 @@ export default function App() {
     if (activeTab === 'finance') return 'Quản lý Tài chính';
     if (activeTab === 'payroll') return 'Bảng lương nhân sự';
     if (activeTab === 'staff') return 'Danh sách nhân viên';
@@ -318,103 +118,103 @@ export default function App() {
           </div>
         </div>
 
-        <div className="space-y-1">
-          <div className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 pl-4">
-            Menu chính
+          <div className="space-y-1">
+            <div className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 pl-4">
+              Menu chính
+            </div>
+
+            <SidebarItem
+              icon={LayoutDashboard}
+              label="Tổng quan"
+              id="dashboard"
+              activeTab={activeTab}
+              setActiveTab={setTab}
+              visible={!isMobile && canViewDashboard()}
+            />
+
+            <SidebarItem
+              icon={Receipt}
+              label="Ghi Phiếu Chi"
+              id="quick_expense"
+              activeTab={activeTab}
+              setActiveTab={setTab}
+              visible={true}
+            />
+
+            <SidebarItem
+              icon={FileText}
+              label="Hợp đồng"
+              id="contracts"
+              activeTab={activeTab}
+              setActiveTab={setTab}
+              visible={canAccess('contracts')}
+            />
+
+            <SidebarItem
+              icon={CheckSquare}
+              label="Công việc"
+              id="tasks"
+              activeTab={activeTab}
+              setActiveTab={setTab}
+              visible={true}
+              badge={pendingTasksCount > 0 ? pendingTasksCount : undefined}
+            />
+
+            <SidebarItem
+              icon={Calendar}
+              label="Lịch trình"
+              id="schedule"
+              activeTab={activeTab}
+              setActiveTab={setTab}
+              visible={!isMobile && canAccess('schedules')}
+            />
+
+            <SidebarItem
+              icon={DollarSign}
+              label="Thu & Chi"
+              id="finance"
+              activeTab={activeTab}
+              setActiveTab={setTab}
+              visible={!isMobile && canViewFinance()}
+            />
+
+            <SidebarItem
+              icon={DollarSign}
+              label="Bảng lương"
+              id="payroll"
+              activeTab={activeTab}
+              setActiveTab={setTab}
+              visible={!isMobile && canAccess('staff')}
+            />
+
+            <SidebarItem
+              icon={Users}
+              label="Nhân sự"
+              id="staff"
+              activeTab={activeTab}
+              setActiveTab={setTab}
+              visible={!isMobile && canAccess('staff')}
+            />
+
+            <SidebarItem
+              icon={Package}
+              label="Dịch vụ"
+              id="products"
+              activeTab={activeTab}
+              setActiveTab={setTab}
+              visible={canAccess('products')}
+            />
+
+            <SidebarItem
+              icon={Settings}
+              label="Cấu hình"
+              id="settings"
+              activeTab={activeTab}
+              setActiveTab={setTab}
+              visible={!isMobile && canAccess('settings')}
+            />
           </div>
-
-          <SidebarItem
-            icon={LayoutDashboard}
-            label="Tổng quan"
-            id="dashboard"
-            activeTab={activeTab}
-            setActiveTab={setTab}
-            visible={canViewDashboard()}
-          />
-
-          <SidebarItem
-            icon={Receipt}
-            label="Ghi Phiếu Chi"
-            id="quick_expense"
-            activeTab={activeTab}
-            setActiveTab={setTab}
-            visible={true}
-          />
-
-          <SidebarItem
-            icon={FileText}
-            label="Hợp đồng"
-            id="contracts"
-            activeTab={activeTab}
-            setActiveTab={setTab}
-            visible={canAccess('contracts')}
-          />
-
-          <SidebarItem
-            icon={CheckSquare}
-            label="Công việc"
-            id="tasks"
-            activeTab={activeTab}
-            setActiveTab={setTab}
-            visible={true}
-            badge={pendingTasksCount > 0 ? pendingTasksCount : undefined}
-          />
-
-          <SidebarItem
-            icon={Calendar}
-            label="Lịch trình"
-            id="schedule"
-            activeTab={activeTab}
-            setActiveTab={setTab}
-            visible={canAccess('schedules')}
-          />
-
-          <SidebarItem
-            icon={DollarSign}
-            label="Thu & Chi"
-            id="finance"
-            activeTab={activeTab}
-            setActiveTab={setTab}
-            visible={canViewFinance()}
-          />
-
-          <SidebarItem
-            icon={DollarSign}
-            label="Bảng lương"
-            id="payroll"
-            activeTab={activeTab}
-            setActiveTab={setTab}
-            visible={canAccess('staff')}
-          />
-
-          <SidebarItem
-            icon={Users}
-            label="Nhân sự"
-            id="staff"
-            activeTab={activeTab}
-            setActiveTab={setTab}
-            visible={canAccess('staff')}
-          />
-
-          <SidebarItem
-            icon={Package}
-            label="Dịch vụ"
-            id="products"
-            activeTab={activeTab}
-            setActiveTab={setTab}
-            visible={canAccess('products')}
-          />
-
-          <SidebarItem
-            icon={Settings}
-            label="Cấu hình"
-            id="settings"
-            activeTab={activeTab}
-            setActiveTab={setTab}
-            visible={canAccess('settings')}
-          />
         </div>
-      </div>
 
       <div className="mt-auto p-6 border-t border-slate-800">
         <div className="flex items-center gap-3 mb-4 p-3 bg-slate-800/50 rounded-2xl">
@@ -440,47 +240,7 @@ export default function App() {
 
   return (
     <div className="flex min-h-screen bg-slate-50 font-sans text-slate-900">
-      {/* Desktop Sidebar */}
-      <aside
-        className={`hidden lg:flex fixed inset-y-0 left-0 z-40 w-72 bg-slate-900 text-white transition-transform duration-300 ease-in-out ${
-          isSidebarOpen ? 'translate-x-0' : '-translate-x-full'
-        } flex-col`}
-      >
-        {SidebarContent}
-      </aside>
-
-      {/* Mobile Drawer */}
-      {isMobile && (
-        <>
-          <div
-            className={`fixed inset-0 z-50 transition-opacity ${
-              isDrawerOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
-            }`}
-          >
-            <div
-              className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"
-              onClick={() => setDrawerOpen(false)}
-            />
-            <div
-              className={`absolute inset-y-0 left-0 w-72 bg-slate-900 text-white shadow-2xl transition-transform duration-300 ${
-                isDrawerOpen ? 'translate-x-0' : '-translate-x-full'
-              }`}
-            >
-              <div className="flex items-center justify-between p-4 border-b border-slate-800">
-                <div className="text-xs font-black uppercase tracking-widest text-slate-300">Menu</div>
-                <button
-                  onClick={() => setDrawerOpen(false)}
-                  className="p-2 rounded-xl hover:bg-slate-800 text-slate-300"
-                >
-                  <X size={18} />
-                </button>
-              </div>
-              {SidebarContent}
-            </div>
-          </div>
-        </>
-      )}
-
+@@ -484,146 +491,146 @@ export default function App() {
       {/* Main Content */}
       <main
         className={`flex-1 transition-all duration-300 min-h-screen flex flex-col ${
@@ -506,7 +266,8 @@ export default function App() {
         </header>
 
         <div className={`p-4 md:p-8 flex-1 overflow-x-hidden relative ${isMobile ? 'pb-24' : ''}`}>
-          {activeTab === 'dashboard' && canViewDashboard() && (
+
+          {!isMobile && activeTab === 'dashboard' && canViewDashboard() && (
             <Dashboard
               contracts={contracts}
               transactions={transactions}
@@ -553,7 +314,7 @@ export default function App() {
             />
           )}
 
-          {activeTab === 'finance' && canViewFinance() && (
+          {!isMobile && activeTab === 'finance' && canViewFinance() && (
             <ExpenseManager
               transactions={transactions}
               setTransactions={setTransactions}
@@ -567,7 +328,7 @@ export default function App() {
             />
           )}
 
-          {activeTab === 'payroll' && canAccess('staff') && (
+          {!isMobile && activeTab === 'payroll' && canAccess('staff') && (
             <PayrollManager
               staff={staff}
               currentUser={currentUser!}
@@ -581,11 +342,13 @@ export default function App() {
             />
           )}
 
-          {activeTab === 'schedule' && canAccess('schedules') && (
+
+          {!isMobile && activeTab === 'schedule' && canAccess('schedules') && (
             <ScheduleManager contracts={contracts} staff={staff} scheduleTypes={scheduleTypes} schedules={schedules} />
           )}
 
-          {activeTab === 'staff' && canAccess('staff') && (
+
+          {!isMobile && activeTab === 'staff' && canAccess('staff') && (
             <StaffManager staff={staff} setStaff={setStaff} schedules={schedules} />
           )}
 
@@ -601,7 +364,8 @@ export default function App() {
             />
           )}
 
-          {activeTab === 'settings' && canAccess('settings') && (
+
+          {!isMobile && activeTab === 'settings' && canAccess('settings') && (
             <StudioSettings
               studioInfo={studioInfo}
               setStudioInfo={setStudioInfo}
@@ -627,72 +391,3 @@ export default function App() {
               />
               <BottomNavItem
                 icon={CheckSquare}
-                label="Công việc"
-                active={activeTab === 'tasks'}
-                onClick={() => setTab('tasks')}
-                visible={true}
-                badge={pendingTasksCount > 0 ? pendingTasksCount : undefined}
-              />
-              <BottomNavItem
-                icon={Package}
-                label="Dịch vụ"
-                active={activeTab === 'products'}
-                onClick={() => setTab('products')}
-                visible={canAccess('products')}
-              />
-              <BottomNavItem
-                icon={Receipt}
-                label="Phiếu chi"
-                active={activeTab === 'quick_expense'}
-                onClick={() => setTab('quick_expense')}
-                visible={true}
-              />
-            </div>
-          </nav>
-        )}
-      </main>
-    </div>
-  );
-}
-
-const SidebarItem = ({ icon: Icon, label, id, activeTab, setActiveTab, visible = true, badge }: any) => {
-  if (!visible) return null;
-  const isActive = activeTab === id;
-  return (
-    <button
-      onClick={() => setActiveTab(id)}
-      className={`w-full flex items-center justify-between p-4 rounded-2xl transition-all mb-1 group relative ${
-        isActive ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/20' : 'text-slate-400 hover:bg-slate-800 hover:text-white'
-      }`}
-    >
-      <div className="flex items-center gap-3">
-        <Icon size={20} className={isActive ? 'text-white' : 'text-slate-500 group-hover:text-white'} />
-        <span className="font-bold text-xs uppercase tracking-wider">{label}</span>
-      </div>
-      {badge > 0 && (
-        <span className="bg-red-500 text-white text-[9px] font-bold px-2 py-0.5 rounded-full shadow-sm">{badge}</span>
-      )}
-      {isActive && <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-8 bg-white rounded-r-full" />}
-    </button>
-  );
-};
-
-const BottomNavItem = ({ icon: Icon, label, active, onClick, visible = true, badge }: any) => {
-  if (!visible) return <div className="py-2" />;
-  return (
-    <button
-      onClick={onClick}
-      className={`relative flex flex-col items-center justify-center gap-1 py-3 text-[10px] font-black uppercase tracking-widest ${
-        active ? 'text-blue-600' : 'text-slate-500'
-      }`}
-    >
-      <Icon size={20} className={active ? 'text-blue-600' : 'text-slate-400'} />
-      <span className="leading-none">{label}</span>
-      {badge > 0 && (
-        <span className="absolute top-1 right-5 bg-red-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full">
-          {badge}
-        </span>
-      )}
-    </button>
-  );
-};
