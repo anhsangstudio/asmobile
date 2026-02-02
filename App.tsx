@@ -266,7 +266,6 @@
         </header>
 
         <div className={`p-4 md:p-8 flex-1 overflow-x-hidden relative ${isMobile ? 'pb-24' : ''}`}>
-
           {!isMobile && activeTab === 'dashboard' && canViewDashboard() && (
             <Dashboard
               contracts={contracts}
@@ -342,11 +341,9 @@
             />
           )}
 
-
           {!isMobile && activeTab === 'schedule' && canAccess('schedules') && (
             <ScheduleManager contracts={contracts} staff={staff} scheduleTypes={scheduleTypes} schedules={schedules} />
           )}
-
 
           {!isMobile && activeTab === 'staff' && canAccess('staff') && (
             <StaffManager staff={staff} setStaff={setStaff} schedules={schedules} />
@@ -363,7 +360,6 @@
               scheduleTypes={scheduleTypes}
             />
           )}
-
 
           {!isMobile && activeTab === 'settings' && canAccess('settings') && (
             <StudioSettings
